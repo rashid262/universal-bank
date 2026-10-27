@@ -1,0 +1,20 @@
+# Secrets: never commit. Copy backend/.env.example and frontend/.env.example instead.
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+frontend/dist/
+backend/target/
+*.log
+
+# IDE and OS files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.factorypath
+.DS_Store
+Thumbs.db

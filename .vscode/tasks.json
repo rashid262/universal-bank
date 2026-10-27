@@ -1,0 +1,102 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Database: PostgreSQL (local)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-Command",
+        "& (Join-Path $env:LOCALAPPDATA 'PostgreSQL\\17-runtime\\pgsql\\bin\\postgres.exe') -D 'C:\\Program Files\\PostgreSQL\\17\\data' -p 5432 -c listen_addresses=localhost"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "postgres-local",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "endsPattern": "database system is ready to accept connections"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "clear": false
+      }
+    },
+    {
+      "label": "Backend: Spring Boot",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-Command",
+        "$env:JAVA_HOME = Join-Path $env:USERPROFILE '.jdks\\ms-21.0.10'; $env:Path = \"$env:JAVA_HOME\\bin;$env:Path\"; $env:SERVER_ADDRESS = '127.0.0.1'; .\\mvnw.cmd spring-boot:run"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\backend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "spring-boot-local",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "endsPattern": "Tomcat started on port 8080"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "clear": false
+      }
+    },
+    {
+      "label": "Frontend: Vite",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": [
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}\\frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite-local",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "endsPattern": "Local: http://127\\.0\\.0\\.1:5173/"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "clear": false
+      }
+    }
+  ]
+}

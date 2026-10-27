@@ -1,0 +1,58 @@
+server:
+  address: 0.0.0.0
+  port: 8080
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: a76838001@smtp-brevo.com
+    password: ${BREVO_SMTP_KEY}
+    properties:
+      mail:
+        from: rashidansari.an697@gmail.com
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+app:
+  base-url: ${APP_BASE_URL}
+  frontend-url: ${FRONTEND_URL:http://127.0.0.1:5173}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  admin:
+    initial-password: ${ADMIN_INITIAL_PASSWORD:}
+    # true = on startup, set the admin password to ADMIN_INITIAL_PASSWORD (forgotten-password recovery)
+    password-reset: ${ADMIN_PASSWORD_RESET:false}
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-ms: 3600000
+  fx:
+    base-url: https://api.frankfurter.dev
+  verification:
+    url: ${APP_BASE_URL}/api/v1/auth/verify?token=
