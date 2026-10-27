@@ -9,6 +9,8 @@ export const apiRequest = async (endpoint, method = "GET", body = null) => {
     method,
     headers: {
       "Content-Type": "application/json",
+      // Skips ngrok's free-tier browser warning page when the API is served through a tunnel
+      "ngrok-skip-browser-warning": "true",
       ...(token && { Authorization: `Bearer ${token}` }),
     },
   };
