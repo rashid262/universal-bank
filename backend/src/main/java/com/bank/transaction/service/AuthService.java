@@ -44,6 +44,9 @@ public class AuthService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${app.mail.from}")
+    private String mailFrom;
+
     private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(30);
 
     private static final String CHAR_POOL = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
@@ -150,8 +153,8 @@ public class AuthService {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
 
-            // This MUST be exactly what is verified in Brevo
-            message.setFrom("rashidansari.an697@gmail.com");
+            // MAIL_FROM must be a sender verified in Brevo
+            message.setFrom(mailFrom);
             message.setTo(email);
             message.setSubject("Universal Bank - Verify Your Account");
 
@@ -250,7 +253,7 @@ public class AuthService {
     private void sendPasswordResetEmail(String email, String rawToken) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("rashidansari.an697@gmail.com");
+            message.setFrom(mailFrom);
             message.setTo(email);
             message.setSubject("Universal Bank - Reset Your Password");
             message.setText("We received a request to reset your Universal Bank password.\n\n" +

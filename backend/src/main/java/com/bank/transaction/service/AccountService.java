@@ -36,6 +36,9 @@ public class AccountService {
     @Value("${app.verification.url}")
     private String verificationBaseUrl;
 
+    @Value("${app.mail.from}")
+    private String mailFrom;
+
     private static final String ACCOUNT_FORMAT = "^UB-\\d{4}$";
 
     // 🛡️ Password Generation Constants
@@ -270,7 +273,7 @@ public class AccountService {
     private void sendProvisioningEmail(String email, String token, String tempPass) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("rashidansari.an697@gmail.com");
+            message.setFrom(mailFrom);
             message.setTo(email);
             message.setSubject("Universal Bank - New Account Created");
 

@@ -1,0 +1,11 @@
+# Keep secrets and local build output out of the Docker build context
+.env
+.env.*
+!.env.example
+target/
+.idea/
+.settings/
+.classpath
+.project
+.vscode/
+*.iml
