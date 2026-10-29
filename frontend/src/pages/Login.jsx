@@ -13,6 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const registered = Boolean(location.state?.registered);
+  const verificationEmailFailed = registered && location.state?.emailSent === false;
   const passwordReset = Boolean(location.state?.passwordReset);
   const sessionExpired = new URLSearchParams(location.search).get("session") === "expired";
 
@@ -50,8 +51,14 @@ export default function Login() {
           <h1>Sign in</h1>
           <p className="subtitle">Use the credentials issued with your Universal Bank account.</p>
           <form className="form-stack" onSubmit={handleLogin}>
-            {registered && !error ? (
+            {registered && !verificationEmailFailed && !error ? (
               <Notice tone="ok">Account created. Confirm the email we sent, then sign in.</Notice>
+            ) : null}
+            {verificationEmailFailed && !error ? (
+              <Notice tone="warn">
+                Account created, but we couldn't send the verification email.{" "}
+                <Link to="/resend-verification">Send it again</Link>
+              </Notice>
             ) : null}
             {passwordReset && !error ? (
               <Notice tone="ok">Password reset. Sign in with your new password.</Notice>
@@ -85,6 +92,9 @@ export default function Login() {
           </form>
           <p className="auth-alt">
             <Link to="/forgot-password">Forgot password?</Link>
+          </p>
+          <p className="auth-alt">
+            <Link to="/resend-verification">Didn't get the verification email?</Link>
           </p>
           <p className="auth-alt">
             New customer? <Link to="/register">Open an account</Link>

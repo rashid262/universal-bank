@@ -6,6 +6,7 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import VerifySuccess from "./pages/VerifySuccess";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import ResendVerification from "./pages/ResendVerification";
 import { GuestOnly, RequireAuth } from "./components/RequireAuth";
 
 export default function App() {
@@ -33,6 +34,14 @@ export default function App() {
           element={
             <GuestOnly>
               <ForgotPassword />
+            </GuestOnly>
+          }
+        />
+        <Route
+          path="/resend-verification"
+          element={
+            <GuestOnly>
+              <ResendVerification />
             </GuestOnly>
           }
         />

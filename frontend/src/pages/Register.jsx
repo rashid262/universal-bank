@@ -46,7 +46,7 @@ export default function Register() {
     setLoading(false);
 
     if (res?.status === "SUCCESS") {
-      navigate("/", { state: { registered: true } });
+      navigate("/", { state: { registered: true, emailSent: res.data !== false } });
       return;
     }
     setError(res?.message || "Registration could not be completed.");

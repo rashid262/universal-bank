@@ -8,6 +8,7 @@ import com.bank.transaction.dto.ChangePasswordRequest;
 import com.bank.transaction.dto.ForgotPasswordRequest;
 import com.bank.transaction.dto.ProfileResponse;
 import com.bank.transaction.dto.RegisterRequest;
+import com.bank.transaction.dto.ResendVerificationRequest;
 import com.bank.transaction.dto.ResetPasswordRequest;
 import jakarta.validation.Valid;
 import com.bank.transaction.service.AuthService;
@@ -42,9 +43,21 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
-        String message = authService.register(request);
-        return ResponseEntity.ok(new ApiResponse<>("SUCCESS", message, null));
+    public ResponseEntity<ApiResponse<Boolean>> register(@Valid @RequestBody RegisterRequest request) {
+        // data = whether the verification email went out
+        boolean emailSent = authService.register(request);
+        String message = emailSent
+                ? "Registration successful! Check your email to verify."
+                : "Account created, but the verification email could not be sent. Request a new link below.";
+        return ResponseEntity.ok(new ApiResponse<>("SUCCESS", message, emailSent));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<String>> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.getEmail());
+        // Identical response whether or not the email exists or is already verified
+        return ResponseEntity.ok(new ApiResponse<>("SUCCESS",
+                "If that email belongs to an account awaiting verification, a new link is on its way.", null));
     }
 
     // New Endpoint for Email Verification
