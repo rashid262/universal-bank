@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailAuthenticationException;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -23,6 +25,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -208,6 +211,55 @@ class AuthServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> authService.resetPassword("raw-token", "brand-new-pass"));
         assertEquals("hashed", customer.getPasswordHash());
+    }
+
+    @Test
+    void registrationReportsWhenVerificationEmailFails() {
+        when(passwordEncoder.encode("s3cret-pass")).thenReturn("hashed");
+        doThrow(new MailAuthenticationException("525 Unauthorized IP address"))
+                .when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertFalse(authService.register(request("UB-5001")));
+        verify(userRepository).save(any(User.class)); // account is kept so a new link can be requested
+    }
+
+    @Test
+    void resendVerificationIssuesFreshTokenForUnverifiedCustomer() {
+        User customer = User.builder().username("new_customer").email("new.customer@example.com")
+                .role(Role.CUSTOMER).isVerified(false).verificationToken("old-token").build();
+        when(userRepository.findByEmailIgnoreCase("new.customer@example.com")).thenReturn(Optional.of(customer));
+
+        authService.resendVerification("new.customer@example.com");
+
+        assertNotNull(customer.getVerificationToken());
+        assertNotEquals("old-token", customer.getVerificationToken());
+        verify(userRepository).save(customer);
+    }
+
+    @Test
+    void resendVerificationIgnoresVerifiedAccounts() {
+        User customer = User.builder().username("new_customer").email("new.customer@example.com")
+                .role(Role.CUSTOMER).isVerified(true).build();
+        when(userRepository.findByEmailIgnoreCase("new.customer@example.com")).thenReturn(Optional.of(customer));
+
+        authService.resendVerification("new.customer@example.com");
+
+        assertNull(customer.getVerificationToken());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void resendVerificationIsRateLimitedPerEmail() {
+        User customer = User.builder().username("new_customer").email("new.customer@example.com")
+                .role(Role.CUSTOMER).isVerified(false).build();
+        when(userRepository.findByEmailIgnoreCase(anyString())).thenReturn(Optional.of(customer));
+
+        authService.resendVerification("new.customer@example.com");
+        String firstToken = customer.getVerificationToken();
+        authService.resendVerification("NEW.customer@example.com");
+
+        assertEquals(firstToken, customer.getVerificationToken());
+        verify(userRepository, times(1)).save(customer);
     }
 
     private RegisterRequest request(String accountId) {

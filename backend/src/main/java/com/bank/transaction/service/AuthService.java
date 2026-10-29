@@ -26,8 +26,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
@@ -48,6 +50,8 @@ public class AuthService {
     private String mailFrom;
 
     private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(30);
+    private static final Duration RESEND_COOLDOWN = Duration.ofMinutes(1);
+    private final Map<String, Instant> lastResendAt = new ConcurrentHashMap<>();
 
     private static final String CHAR_POOL = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
     private final SecureRandom random = new SecureRandom();
@@ -77,8 +81,9 @@ public class AuthService {
         return new AuthResponse(token, user.getUsername(), user.getAccountId(), user.getRole().name());
     }
 
+    /** Returns true when the verification email was handed to the mail server. */
     @Transactional
-    public String register(RegisterRequest request) {
+    public boolean register(RegisterRequest request) {
         String email = request.getEmail().trim();
         String username = request.getUsername().trim();
         if (userRepository.existsByEmail(email)) {
@@ -101,8 +106,38 @@ public class AuthService {
         user.setVerificationToken(vToken);
         userRepository.save(user);
 
-        sendEmail(user.getEmail(), vToken, null);
-        return "Registration successful! Check your email to verify.";
+        // The account is kept even if mail fails; the customer can request a new link
+        return sendEmail(user.getEmail(), vToken, null);
+    }
+
+    /**
+     * Emails a fresh verification link to an unverified customer. Always completes silently so the
+     * response never reveals whether an email is registered or already verified.
+     */
+    @Transactional
+    public void resendVerification(String email) {
+        userRepository.findByEmailIgnoreCase(email.trim())
+                .filter(user -> user.getRole() == Role.CUSTOMER && !user.isVerified())
+                .filter(user -> claimResendSlot(user.getEmail()))
+                .ifPresent(user -> {
+                    // A new token retires any earlier link
+                    String vToken = UUID.randomUUID().toString();
+                    user.setVerificationToken(vToken);
+                    userRepository.save(user);
+                    String to = user.getEmail();
+                    CompletableFuture.runAsync(() -> sendEmail(to, vToken, null));
+                });
+    }
+
+    // At most one resend per address per cooldown, so the endpoint can't be used to flood an inbox
+    private boolean claimResendSlot(String email) {
+        Instant now = Instant.now();
+        Instant last = lastResendAt.get(email.toLowerCase());
+        if (last != null && now.isBefore(last.plus(RESEND_COOLDOWN))) {
+            return false;
+        }
+        lastResendAt.put(email.toLowerCase(), now);
+        return true;
     }
 
     @Transactional
@@ -149,7 +184,7 @@ public class AuthService {
         return sb.toString();
     }
 
-    public void sendEmail(String email, String token, String tempPass) {
+    public boolean sendEmail(String email, String token, String tempPass) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
 
@@ -166,10 +201,12 @@ public class AuthService {
 
             mailSender.send(message);
             System.out.println("✅ Email successfully sent to: " + email);
+            return true;
         } catch (Exception e) {
             System.err.println("❌ Email Error Type: " + e.getClass().getName());
             System.err.println("❌ Error Message: " + e.getMessage());
             e.printStackTrace();
+            return false;
         }
     }
 
