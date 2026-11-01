@@ -5,9 +5,11 @@ import com.bank.transaction.domain.User;
 import com.bank.transaction.dto.AuthRequest;
 import com.bank.transaction.dto.RegisterRequest;
 import com.bank.transaction.enums.Role;
+import com.bank.transaction.exception.TooManyRequestsException;
 import com.bank.transaction.repository.AccountRepository;
 import com.bank.transaction.repository.UserRepository;
 import com.bank.transaction.security.JwtUtil;
+import com.bank.transaction.security.LoginAttemptService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +49,8 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, accountRepository, passwordEncoder, mailSender, jwtUtil);
+        authService = new AuthService(userRepository, accountRepository, passwordEncoder, mailSender, jwtUtil,
+                new LoginAttemptService());
     }
 
     @Test
@@ -95,6 +99,55 @@ class AuthServiceTest {
         assertFalse(user.getValue().isVerified());
         assertEquals("hashed", user.getValue().getPasswordHash());
         assertNotNull(user.getValue().getVerificationToken());
+    }
+
+    @Test
+    void loginLocksTheUsernameAfterFiveWrongPasswords() {
+        User admin = User.builder().username("admin").passwordHash("hashed").role(Role.ADMIN).isVerified(true).build();
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
+
+        for (int i = 0; i < 5; i++) {
+            RuntimeException ex = assertThrows(RuntimeException.class,
+                    () -> authService.login(new AuthRequest("admin", "wrong")));
+            assertFalse(ex instanceof TooManyRequestsException, "attempt " + (i + 1) + " is not locked yet");
+        }
+
+        // Even the right password is refused while locked, and it is never checked
+        TooManyRequestsException locked = assertThrows(TooManyRequestsException.class,
+                () -> authService.login(new AuthRequest("admin", "right")));
+        assertTrue(locked.getRetryAfterSeconds() > 0);
+        verify(passwordEncoder, never()).matches(eq("right"), anyString());
+    }
+
+    @Test
+    void loginLocksUnknownUsernamesTheSameWay() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        for (int i = 0; i < 5; i++) {
+            assertThrows(RuntimeException.class, () -> authService.login(new AuthRequest("ghost", "guess")));
+        }
+
+        assertThrows(TooManyRequestsException.class, () -> authService.login(new AuthRequest("ghost", "guess")));
+    }
+
+    @Test
+    void successfulLoginResetsTheFailureCount() {
+        User customer = User.builder().username("wazeh").passwordHash("hashed").role(Role.CUSTOMER).isVerified(true).build();
+        when(userRepository.findByUsername("wazeh")).thenReturn(Optional.of(customer));
+        when(passwordEncoder.matches("wrong", "hashed")).thenReturn(false);
+        when(passwordEncoder.matches("right", "hashed")).thenReturn(true);
+        when(jwtUtil.generateToken("wazeh", "CUSTOMER")).thenReturn("token");
+
+        for (int i = 0; i < 4; i++) {
+            assertThrows(RuntimeException.class, () -> authService.login(new AuthRequest("wazeh", "wrong")));
+        }
+        assertEquals("token", authService.login(new AuthRequest("wazeh", "right")).getToken());
+        for (int i = 0; i < 4; i++) {
+            RuntimeException ex = assertThrows(RuntimeException.class,
+                    () -> authService.login(new AuthRequest("wazeh", "wrong")));
+            assertFalse(ex instanceof TooManyRequestsException);
+        }
     }
 
     @Test

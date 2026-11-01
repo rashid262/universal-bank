@@ -1,6 +1,8 @@
 package com.bank.transaction.config;
 
 import com.bank.transaction.security.JwtAuthFilter;
+import com.bank.transaction.security.RateLimitFilter;
+import com.bank.transaction.security.RateLimiter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,11 +22,13 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimiter rateLimiter;
     private final List<String> allowedOrigins;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimiter rateLimiter,
                           @Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.rateLimiter = rateLimiter;
         this.allowedOrigins = allowedOrigins;
     }
 
@@ -58,7 +62,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/accounts/*/balance").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/v1/accounts/*/transactions").authenticated()
                 .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Runs after CORS (so browsers can read a 429) and before any token or password check
+                .addFilterBefore(new RateLimitFilter(rateLimiter), JwtAuthFilter.class);
 
         return http.build();
     }

@@ -184,6 +184,7 @@ Quote responses include `sourceCurrency`, `destinationCurrency`, `sourceAmount`,
 ## Security
 
 - Passwords are hashed with BCrypt; accounts must be email-verified before sign-in.
+- Brute-force protection: per-IP limits on the public auth endpoints (30 sign-ins per minute; 5–10 per hour for endpoints that send email or reset passwords), answered with HTTP 429 and `Retry-After`. After 5 wrong passwords a username is locked for 15 minutes, whether or not it exists. Behind ngrok, the client IP comes from `X-Forwarded-For`, trusted only for requests from the local tunnel. Counters are in memory (single instance).
 - Stateless JWT authentication with `ROLE_ADMIN` and `ROLE_CUSTOMER`; the API checks that customers only read their own accounts.
 - The frontend route guards are for user experience only; the API is the security boundary.
 - Secrets live in `backend/.env` (git-ignored), never in the repository or the frontend.

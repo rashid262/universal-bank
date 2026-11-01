@@ -7,9 +7,11 @@ import com.bank.transaction.dto.AuthRequest;
 import com.bank.transaction.dto.AuthResponse;
 import com.bank.transaction.dto.RegisterRequest;
 import com.bank.transaction.enums.Role;
+import com.bank.transaction.exception.TooManyRequestsException;
 import com.bank.transaction.repository.AccountRepository;
 import com.bank.transaction.repository.UserRepository;
 import com.bank.transaction.security.JwtUtil;
+import com.bank.transaction.security.LoginAttemptService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -39,6 +41,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender; // Changed from RestTemplate
     private final JwtUtil jwtUtil;
+    private final LoginAttemptService loginAttempts;
 
     @Value("${app.verification.url}")
     private String verificationBaseUrl;
@@ -57,20 +60,34 @@ public class AuthService {
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(UserRepository userRepository, AccountRepository accountRepository,
-                       PasswordEncoder passwordEncoder, JavaMailSender mailSender, JwtUtil jwtUtil) {
+                       PasswordEncoder passwordEncoder, JavaMailSender mailSender, JwtUtil jwtUtil,
+                       LoginAttemptService loginAttempts) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.passwordEncoder = passwordEncoder;
         this.mailSender = mailSender;
         this.jwtUtil = jwtUtil;
+        this.loginAttempts = loginAttempts;
     }
 
     public AuthResponse login(AuthRequest request) {
+        // After repeated wrong passwords the username is locked for a while, real or not
+        long lockedFor = loginAttempts.secondsLocked(request.getUsername());
+        if (lockedFor > 0) {
+            throw new TooManyRequestsException("Too many failed sign-in attempts. Try again in "
+                    + Math.max(1, (lockedFor + 59) / 60) + " minute(s).", lockedFor);
+        }
+
         // Same message for unknown user and wrong password so usernames cannot be enumerated
         User user = userRepository.findByUsername(request.getUsername())
                 .filter(found -> request.getPassword() != null
                         && passwordEncoder.matches(request.getPassword(), found.getPasswordHash()))
-                .orElseThrow(() -> new RuntimeException("Invalid username or password."));
+                .orElse(null);
+        if (user == null) {
+            loginAttempts.recordFailure(request.getUsername());
+            throw new RuntimeException("Invalid username or password.");
+        }
+        loginAttempts.recordSuccess(request.getUsername());
 
         // Only revealed after the password is proven, so it leaks nothing to a guesser
         if (!user.isVerified()) {
