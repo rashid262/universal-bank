@@ -4,6 +4,10 @@ server:
   port: ${PORT:8080}
 
 spring:
+  autoconfigure:
+    # Login is JWT-only; skip the unused default in-memory user and its generated password
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -15,7 +19,6 @@ spring:
       ddl-auto: update
     show-sql: ${SHOW_SQL:false}
     open-in-view: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
         format_sql: ${SHOW_SQL:false}

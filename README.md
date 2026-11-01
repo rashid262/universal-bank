@@ -5,7 +5,7 @@ A full-stack demo banking application: customers sign up, verify their email, an
 **Live frontend:** https://universal-bank.vercel.app (the API runs on demand, so it may be offline)
 **Automated tests:** [rashid262/ai-sdet-framework](https://github.com/rashid262/ai-sdet-framework), Playwright + Cucumber UI and API suite with GitHub Actions CI
 
-**Stack:** React 19 · Vite 7 · React Router 7 · Java 21 · Spring Boot 3.2 · Spring Security (JWT) · Spring Data JPA · PostgreSQL (Neon) · Brevo SMTP · Frankfurter FX API · Vercel · ngrok
+**Stack:** React 19 · Vite 7 · React Router 7 · Java 21 · Spring Boot 3.5 · Spring Security (JWT) · Spring Data JPA · PostgreSQL (Neon) · Brevo SMTP · Frankfurter FX API · Vercel · ngrok
 
 > This is a learning and demo project, not a real bank. Exchange rates are daily reference rates, the vault balance is an admin-entered demo entry, and the security setup is not meant for real money.
 
