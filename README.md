@@ -189,6 +189,7 @@ Quote responses include `sourceCurrency`, `destinationCurrency`, `sourceAmount`,
 - Stateless JWT authentication with `ROLE_ADMIN` and `ROLE_CUSTOMER`; the API checks that customers only read their own accounts.
 - The frontend route guards are for user experience only; the API is the security boundary.
 - Secrets live in `backend/.env` (git-ignored), never in the repository or the frontend.
+- Errors never expose internals: messages the app writes for users are shown, while database, library and JVM errors return a generic message with a short reference ID, and the details are logged on the server. Access to another customer's data returns 403.
 
 ## Testing
 

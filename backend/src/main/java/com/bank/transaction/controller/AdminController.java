@@ -32,12 +32,8 @@ public class AdminController {
     // 🕵️ THE MONEY TRACKER ENDPOINT
     @GetMapping("/transactions/all")
     public ResponseEntity<ApiResponse<List<Transaction>>> getGlobalFlow() {
-        try {
-            List<Transaction> logs = transactionService.getAllTransactionsForAdmin();
-            return ResponseEntity.ok(new ApiResponse<>("SUCCESS", "Global logs retrieved", logs));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(new ApiResponse<>("ERROR", "Failed to fetch logs: " + e.getMessage(), null));
-        }
+        // Failures go to GlobalExceptionHandler, which logs the details and hides them from the client
+        List<Transaction> logs = transactionService.getAllTransactionsForAdmin();
+        return ResponseEntity.ok(new ApiResponse<>("SUCCESS", "Global logs retrieved", logs));
     }
 }
