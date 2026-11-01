@@ -103,9 +103,12 @@ public class AuthService {
     public boolean register(RegisterRequest request) {
         String email = request.getEmail().trim();
         String username = request.getUsername().trim();
-        if (userRepository.existsByEmail(email)) {
-            throw new RuntimeException("Email already in use!");
+        if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
+            // Never reveal that an email is registered: reply exactly as for a new sign-up
+            // and tell the real owner by email instead. Nothing is created or changed.
+            return sendAlreadyRegisteredEmail(email);
         }
+        // Usernames and account numbers are public and must be unique, so these stay explicit
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("Username already in use!");
         }
@@ -223,6 +226,30 @@ public class AuthService {
             System.err.println("❌ Email Error Type: " + e.getClass().getName());
             System.err.println("❌ Error Message: " + e.getMessage());
             e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Sent instead of a verification link when someone signs up with an email that already has an
+     * account. Same delivery path and return value as a real sign-up email, so the API response and
+     * its timing look the same either way.
+     */
+    boolean sendAlreadyRegisteredEmail(String email) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(email);
+            message.setSubject("Universal Bank - Sign-up attempt with your email");
+            message.setText("Someone tried to create a Universal Bank account with this email address, "
+                    + "but it already has an account.\n\n"
+                    + "If it was you, sign in at " + frontendUrl + " or use \"Forgot password?\" on the "
+                    + "sign-in page to choose a new password.\n\n"
+                    + "If it wasn't you, ignore this email. Nothing has changed on your account.");
+            mailSender.send(message);
+            return true;
+        } catch (Exception e) {
+            System.err.println("Already-registered notice could not be sent: " + e.getMessage());
             return false;
         }
     }

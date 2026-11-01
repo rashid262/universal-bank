@@ -102,6 +102,35 @@ class AuthServiceTest {
     }
 
     @Test
+    void registrationWithAnExistingEmailLooksLikeSuccessAndCreatesNothing() {
+        User existing = User.builder().username("someone").email("new.customer@example.com").build();
+        when(userRepository.findByEmailIgnoreCase("new.customer@example.com")).thenReturn(Optional.of(existing));
+
+        boolean emailSent = authService.register(request("UB-5001"));
+
+        // Same answer as a brand-new sign-up, so the caller learns nothing
+        assertTrue(emailSent);
+        verify(accountRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
+
+        // The real owner is told by email instead
+        ArgumentCaptor<SimpleMailMessage> mail = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(mail.capture());
+        assertArrayEquals(new String[]{"new.customer@example.com"}, mail.getValue().getTo());
+        assertTrue(mail.getValue().getText().contains("already has an account"));
+    }
+
+    @Test
+    void registrationWithAnExistingEmailReportsAFailedNoticeLikeAFailedSignUp() {
+        User existing = User.builder().username("someone").email("new.customer@example.com").build();
+        when(userRepository.findByEmailIgnoreCase("new.customer@example.com")).thenReturn(Optional.of(existing));
+        doThrow(new MailAuthenticationException("525 Unauthorized IP address"))
+                .when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertFalse(authService.register(request("UB-5001")));
+    }
+
+    @Test
     void loginLocksTheUsernameAfterFiveWrongPasswords() {
         User admin = User.builder().username("admin").passwordHash("hashed").role(Role.ADMIN).isVerified(true).build();
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
